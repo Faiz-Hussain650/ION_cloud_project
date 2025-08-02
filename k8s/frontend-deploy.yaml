@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: hello-app
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/hello-frontend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: DB_HOST
+          value: postgres
+        - name: DB_NAME
+          value: hello_db
+        - name: DB_USER
+          value: hello_user
+        - name: DB_PASS
+          value: hello_pass

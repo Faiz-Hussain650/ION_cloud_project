@@ -1,0 +1,38 @@
+version: 0.2
+
+env:
+  variables:
+    ECR_DB_REPO: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hello-db"
+    ECR_FE_REPO: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hello-frontend"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - pip install flake8 pytest
+      - flake8 frontend/app.py
+      - pytest --maxfail=1 --disable-warnings -q
+  pre_build:
+    commands:
+      - echo Logging into ECR...
+      - aws --version
+      - $(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_DB_REPO)
+      - $(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_FE_REPO)
+  build:
+    commands:
+      - echo Building Docker images...
+      - docker build -t hello-db ./database
+      - docker tag hello-db:latest $ECR_DB_REPO:latest
+      - docker build -t hello-frontend ./frontend
+      - docker tag hello-frontend:latest $ECR_FE_REPO:latest
+  post_build:
+    commands:
+      - echo Pushing images to ECR...
+      - docker push $ECR_DB_REPO:latest
+      - docker push $ECR_FE_REPO:latest
+      - printf '[{"name":"hello-db","imageUri":"%s"},{"name":"hello-frontend","imageUri":"%s"}]' \
+          $ECR_DB_REPO:latest $ECR_FE_REPO:latest > imagedefinitions.json
+artifacts:
+  files:
+    - imagedefinitions.json
