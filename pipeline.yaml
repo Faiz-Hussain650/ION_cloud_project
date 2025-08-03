@@ -72,6 +72,10 @@ Resources:
         EnvironmentVariables:
           - Name: AWS_DEFAULT_REGION
             Value: !Ref "AWS::Region"
+          - Name: ECR_DB_REPO
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hello-db"
+          - Name: ECR_FE_REPO
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hello-frontend"
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
         Type: CODEPIPELINE
@@ -93,6 +97,8 @@ Resources:
             Value: !Ref EKSClusterName
           - Name: SECRET_ARN
             Value: !Ref DbCredentialsSecret
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref "AWS::Region"
       ServiceRole: !GetAtt CodeBuildServiceRole.Arn
       Artifacts:
         Type: CODEPIPELINE
