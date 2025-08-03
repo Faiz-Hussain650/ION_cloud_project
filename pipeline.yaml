@@ -4,7 +4,7 @@ Description: >
 
 Parameters:
   GitHubToken:
-    Type: String
+    Type: String                      
     Description: ARN of a secret in SecretsManager holding your GitHub OAuth token.
   GitHubRepoOwner:
     Type: String
@@ -50,7 +50,6 @@ Resources:
           "username": "${DBUser}",
           "dbname": "${DBName}"
         }
-    # "password": "hello_pass",
 
   ### 3.1 CodeBuild: Build & Test Project ###
   HelloAppBuildProject:
@@ -70,7 +69,6 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
       TimeoutInMinutes: 30
-
 
   ### 3.2 CodeBuild: Deploy to EKS ###
   HelloAppDeployProject:
@@ -92,47 +90,6 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
       TimeoutInMinutes: 20
-      ### Inline deploy buildspec ###
-      BuildSpec: |
-        version: 0.2
-        phases:
-          install:
-            commands:
-              - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.9/2022-03-15/bin/linux/amd64/kubectl
-              - chmod +x kubectl; mv kubectl /usr/local/bin/
-              - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
-              - unzip awscli.zip; ./aws/install
-          pre_build:
-            commands:
-              - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
-          build:
-            commands:
-              - echo "Retrieving DB credentials from Secrets Manager..."
-              - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text)
-              - USERNAME=$(echo $SECRET_JSON | jq -r .username)
-              - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
-              - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
-              - |
-                cat <<EOF > k8s/db-secret.yaml
-                apiVersion: v1
-                kind: Secret
-                metadata:
-                  name: db-credentials
-                  namespace: hello-app
-                type: Opaque
-                stringData:
-                  DB_USER: $USERNAME
-                  DB_PASS: $PASSWORD
-                  DB_NAME: $DBNAME
-                EOF
-              - echo "Applying Kubernetes manifests..."
-              - kubectl apply -f k8s/namespace.yaml
-              - kubectl apply -f k8s/db-secret.yaml
-              - kubectl apply -f k8s/postgres-deploy.yaml
-              - kubectl apply -f k8s/postgres-service.yaml
-              - kubectl apply -f k8s/frontend-deploy.yaml
-              - kubectl apply -f k8s/frontend-service.yaml
-
 
   ### 4. IAM Role for CodeBuild ###
   CodeBuildServiceRole:
@@ -176,7 +133,6 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource: !Sub arn:aws:s3:::codepipeline-artifacts-${AWS::AccountId}/*
-
 
   ### 5 CodePipeline ###
   HelloAppPipeline:
@@ -230,7 +186,45 @@ Resources:
                 - Name: BuildOutput
               Configuration:
                 ProjectName: !Ref HelloAppDeployProject
-
+                BuildSpecOverride: |   
+                  version: 0.2
+                  phases:
+                    install:
+                      commands:
+                        - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.9/2022-03-15/bin/linux/amd64/kubectl
+                        - chmod +x kubectl; mv kubectl /usr/local/bin/
+                        - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
+                        - unzip awscli.zip; ./aws/install
+                    pre_build:
+                      commands:
+                        - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
+                    build:
+                      commands:
+                        - echo "Retrieving DB credentials from Secrets Manager..."
+                        - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text)
+                        - USERNAME=$(echo $SECRET_JSON | jq -r .username)
+                        - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
+                        - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
+                        - |
+                          cat <<EOF > k8s/db-secret.yaml
+                          apiVersion: v1
+                          kind: Secret
+                          metadata:
+                            name: db-credentials
+                            namespace: hello-app
+                          type: Opaque
+                          stringData:
+                            DB_USER: $USERNAME
+                            DB_PASS: $PASSWORD
+                            DB_NAME: $DBNAME
+                          EOF
+                        - echo "Applying Kubernetes manifests..."
+                        - kubectl apply -f k8s/namespace.yaml
+                        - kubectl apply -f k8s/db-secret.yaml
+                        - kubectl apply -f k8s/postgres-deploy.yaml
+                        - kubectl apply -f k8s/postgres-service.yaml
+                        - kubectl apply -f k8s/frontend-deploy.yaml
+                        - kubectl apply -f k8s/frontend-service.yaml
 
   ### 6. CodePipeline IAM Role ###
   CodePipelineServiceRole:
