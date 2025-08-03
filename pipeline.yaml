@@ -193,7 +193,8 @@ Resources:
                 - Name: BuildOutput
               Configuration:
                 ProjectName: !Ref HelloAppDeployProject
-
+                BuildspecOverride: buildspec-deploy.yml
+                
   ### 6. CodePipeline IAM Role ###
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
