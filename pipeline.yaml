@@ -4,7 +4,7 @@ Description: >
 
 Parameters:
   GitHubToken:
-    Type: String                      
+    Type: String
     Description: ARN of a secret in SecretsManager holding your GitHub OAuth token.
   GitHubRepoOwner:
     Type: String
@@ -27,6 +27,14 @@ Parameters:
 
 Resources:
 
+  ###  Artifact Bucket ###
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub codepipeline-artifacts-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+
   ### 1. ECR Repositories ###
   HelloDbRepo:
     Type: AWS::ECR::Repository
@@ -37,7 +45,6 @@ Resources:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: hello-frontend
-
 
   ### 2. Secrets Manager ###
   DbCredentialsSecret:
@@ -134,14 +141,14 @@ Resources:
                   - s3:PutObject
                 Resource: !Sub arn:aws:s3:::codepipeline-artifacts-${AWS::AccountId}/*
 
-  ### 5 CodePipeline ###
+  ### 5. CodePipeline ###
   HelloAppPipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
       RoleArn: !GetAtt CodePipelineServiceRole.Arn
       ArtifactStore:
         Type: S3
-        Location: !Sub codepipeline-artifacts-${AWS::AccountId}
+        Location: !Ref ArtifactBucket   
       Stages:
         - Name: Source
           Actions:
@@ -186,7 +193,7 @@ Resources:
                 - Name: BuildOutput
               Configuration:
                 ProjectName: !Ref HelloAppDeployProject
-                BuildSpecOverride: |   
+                BuildSpecOverride: |
                   version: 0.2
                   phases:
                     install:
