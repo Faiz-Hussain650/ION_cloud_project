@@ -1,9 +1,12 @@
+---
+# buildspec.yml (build-and-test)
 version: 0.2
 
 env:
   variables:
-    ECR_DB_REPO: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hello-db"
-    ECR_FE_REPO: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/hello-frontend"
+    # Injected via CFN CodeBuild environment variables
+    ECR_DB_REPO: "$ECR_DB_REPO"
+    ECR_FE_REPO: "$ECR_FE_REPO"
 
 phases:
   install:
@@ -13,12 +16,14 @@ phases:
       - pip install flake8 pytest
       - flake8 frontend/app.py
       - pytest --maxfail=1 --disable-warnings -q
+
   pre_build:
     commands:
       - echo Logging into ECR...
       - aws --version
       - $(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_DB_REPO)
       - $(aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_FE_REPO)
+
   build:
     commands:
       - echo Building Docker images...
@@ -26,6 +31,7 @@ phases:
       - docker tag hello-db:latest $ECR_DB_REPO:latest
       - docker build -t hello-frontend ./frontend
       - docker tag hello-frontend:latest $ECR_FE_REPO:latest
+
   post_build:
     commands:
       - echo Pushing images to ECR...
@@ -33,6 +39,55 @@ phases:
       - docker push $ECR_FE_REPO:latest
       - printf '[{"name":"hello-db","imageUri":"%s"},{"name":"hello-frontend","imageUri":"%s"}]' \
           $ECR_DB_REPO:latest $ECR_FE_REPO:latest > imagedefinitions.json
+
 artifacts:
   files:
     - imagedefinitions.json
+
+---
+# buildspec-deploy.yml (deploy to EKS)
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - curl -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.21.9/2022-03-15/bin/linux/amd64/kubectl
+      - chmod +x kubectl; mv kubectl /usr/local/bin/
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
+      - unzip awscli.zip; ./aws/install
+
+  pre_build:
+    commands:
+      - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
+
+  build:
+    commands:
+      - echo "Retrieving DB credentials from Secrets Manager..."
+      - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text)
+      - USERNAME=$(echo $SECRET_JSON | jq -r .username)
+      - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
+      - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
+      - |
+        cat <<EOF > k8s/db-secret.yaml
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: db-credentials
+          namespace: hello-app
+        type: Opaque
+        stringData:
+          DB_USER: $USERNAME
+          DB_PASS: $PASSWORD
+          DB_NAME: $DBNAME
+        EOF
+      - echo "Applying Kubernetes manifests..."
+      - kubectl apply -f k8s/namespace.yaml
+      - kubectl apply -f k8s/db-secret.yaml
+      - kubectl apply -f k8s/postgres-deployment.yaml
+      - kubectl apply -f k8s/postgres-service.yaml
+      - kubectl apply -f k8s/frontend-deployment.yaml
+      - kubectl apply -f k8s/frontend-service.yaml
+
+artifacts:
+  files:
+    - '**/*'
