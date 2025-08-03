@@ -203,6 +203,8 @@ Resources:
                 Version: '1'
               InputArtifacts:
                 - Name: BuildOutput
+              OutputArtifacts:
+                - Name: BuildOutput
               Configuration:
                 ProjectName: !Ref HelloAppDeployProject
                 BuildspecOverride: buildspec-deploy.yml
