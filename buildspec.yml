@@ -1,10 +1,7 @@
----
-# buildspec.yml (build-and-test)
 version: 0.2
 
 env:
   variables:
-    # Injected via CFN CodeBuild environment variables
     ECR_DB_REPO: "$ECR_DB_REPO"
     ECR_FE_REPO: "$ECR_FE_REPO"
 

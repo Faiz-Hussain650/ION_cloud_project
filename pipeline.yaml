@@ -140,6 +140,12 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource: !Sub arn:aws:s3:::codepipeline-artifacts-${AWS::AccountId}/*
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup          
+                  - logs:CreateLogStream         
+                  - logs:PutLogEvents            
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
 
   ### 5. CodePipeline ###
   HelloAppPipeline:
@@ -194,7 +200,7 @@ Resources:
               Configuration:
                 ProjectName: !Ref HelloAppDeployProject
                 BuildspecOverride: buildspec-deploy.yml
-                
+
   ### 6. CodePipeline IAM Role ###
   CodePipelineServiceRole:
     Type: AWS::IAM::Role
