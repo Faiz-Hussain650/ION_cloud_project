@@ -4,7 +4,7 @@ Description: >
 
 Parameters:
   GitHubToken:
-    Type: AWS::SecretsManager::SecretArn
+    Type: String
     Description: ARN of a secret in SecretsManager holding your GitHub OAuth token.
   GitHubRepoOwner:
     Type: String
