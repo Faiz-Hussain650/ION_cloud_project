@@ -205,7 +205,7 @@ Resources:
                 - Name: BuildOutput
               Configuration:
                 ProjectName: !Ref HelloAppDeployProject
-                #BuildspecOverride: buildspec-deploy.yml
+                ### BuildspecOverride: buildspec-deploy.yml
                 BuildspecOverride: |
                     version: 0.2
                     phases:
