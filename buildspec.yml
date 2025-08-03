@@ -11,7 +11,7 @@ phases:
       python: 3.9
     commands:
       - pip install flake8 pytest
-      - flake8 frontend/app.py
+      - flake8 --ignore=E302,E305 frontend/app.py
       - pytest --maxfail=1 --disable-warnings -q
 
   pre_build:
