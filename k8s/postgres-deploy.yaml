@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: <AWS_ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/hello-db:latest
+        image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/hello-db:latest
         ports:
         - containerPort: 5432
         volumeMounts:
