@@ -1,10 +1,5 @@
 version: 0.2
 
-env:
-  variables:
-    ECR_DB_REPO: "$ECR_DB_REPO"
-    ECR_FE_REPO: "$ECR_FE_REPO"
-
 phases:
   install:
     runtime-versions:
