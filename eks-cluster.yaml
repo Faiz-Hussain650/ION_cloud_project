@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Standalone EKS Cluster stack with VPC, subnets, control plane, and managed node group.
+
+Parameters:
+  EKSClusterName:
+    Type: String
+    Default: hello-app-cluster
+    Description: Name of the EKS cluster to create
+  NodeGroupInstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for the worker nodes
+  NodeGroupDesiredSize:
+    Type: Number
+    Default: 2
+    Description: Desired number of worker nodes
+  NodeGroupMinSize:
+    Type: Number
+    Default: 2
+    Description: Minimum number of worker nodes
+  NodeGroupMaxSize:
+    Type: Number
+    Default: 4
+    Description: Maximum number of worker nodes
+
+Resources:
+  # 1. VPC
+  EksVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EKSClusterName}-vpc"
+
+  # 2. Two public subnets in different AZs
+  EksSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EksVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EKSClusterName}-subnet-a"
+
+  EksSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EksVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EKSClusterName}-subnet-b"
+
+  # 3. Internet Gateway + route table so nodes can pull images, etc.
+  EksInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${EKSClusterName}-igw"
+
+  EksVpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref EksVPC
+      InternetGatewayId: !Ref EksInternetGateway
+
+  EksPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EksVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${EKSClusterName}-public-rt"
+
+  EksPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: EksVpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref EksPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref EksInternetGateway
+
+  EksSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksSubnetA
+      RouteTableId: !Ref EksPublicRouteTable
+
+  EksSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EksSubnetB
+      RouteTableId: !Ref EksPublicRouteTable
+
+  # 4. EKS Control Plane
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref EKSClusterName
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref EksSubnetA
+          - !Ref EksSubnetB
+        EndpointPublicAccess: true
+      RoleArn: !GetAtt EKSClusterRole.Arn
+
+  # 5. IAM Role for EKS Control Plane
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+
+  # 6. IAM Role for Worker Nodes
+  EKSNodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+  # 7. Managed Node Group
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: !Sub "${EKSClusterName}-nodes"
+      ScalingConfig:
+        MinSize: !Ref NodeGroupMinSize
+        DesiredSize: !Ref NodeGroupDesiredSize
+        MaxSize: !Ref NodeGroupMaxSize
+      DiskSize: 20
+      Subnets:
+        - !Ref EksSubnetA
+        - !Ref EksSubnetB
+      InstanceTypes:
+        - !Ref NodeGroupInstanceType
+      NodeRole: !GetAtt EKSNodeRole.Arn
+      AmiType: AL2_x86_64
+
+Outputs:
+  ClusterName:
+    Description: Name of the EKS cluster
+    Value: !Ref EKSCluster
+  ClusterEndpoint:
+    Description: API endpoint for the cluster
+    Value: !GetAtt EKSCluster.Endpoint
+  ClusterCA:
+    Description: Base64-encoded certificate authority data
+    Value: !GetAtt EKSCluster.CertificateAuthorityData
