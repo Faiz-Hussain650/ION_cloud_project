@@ -247,7 +247,6 @@ Resources:
                             EOF
                           - echo "Applying Kubernetes manifests..."
                           - |
-                            # Dynamically substitute AWS Account and Region into deployment manifests
                             AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
                             AWS_REGION=$AWS_DEFAULT_REGION
                             envsubst < k8s/postgres-deploy.yaml | kubectl apply -f -
