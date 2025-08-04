@@ -1,11 +1,14 @@
 version: 0.2
+
 phases:
   install:
     commands:
-      - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/amazon-eks/1.21.9/2022-03-15/bin/linux/amd64/kubectl
-      - chmod +x kubectl; mv kubectl /usr/local/bin/
-      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
-      - unzip awscli.zip; ./aws/install --update
+      - curl -sSL -o kubectl \
+          https://amazon-eks.s3.${AWS_DEFAULT_REGION}.amazonaws.com/1.32.3/2025-04-17/bin/linux/amd64/kubectl
+      - chmod +x kubectl && mv kubectl /usr/local/bin/
+      - kubectl version --client
+      - curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
+      - unzip awscli.zip && ./aws/install --update
 
   pre_build:
     commands:
