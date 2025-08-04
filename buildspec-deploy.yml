@@ -18,7 +18,6 @@ phases:
       - USERNAME=$(echo $SECRET_JSON | jq -r .username)
       - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
       - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
-      - if [ ! -d k8s ]; then echo "ERROR: k8s/ folder missing"; exit 1; fi
 
       - |
         cat <<EOF > k8s/db-secret.yaml
