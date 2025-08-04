@@ -1,54 +1,53 @@
-BuildspecOverride: |
-  version: 0.2
-  phases:
-    install:
-      commands:
-        - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/amazon-eks/1.21.9/2022-03-15/bin/linux/amd64/kubectl
-        - chmod +x kubectl; mv kubectl /usr/local/bin/
-        - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
-        - unzip awscli.zip; ./aws/install --update
+version: 0.2
+phases:
+  install:
+    commands:
+      - curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/amazon-eks/1.21.9/2022-03-15/bin/linux/amd64/kubectl
+      - chmod +x kubectl; mv kubectl /usr/local/bin/
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
+      - unzip awscli.zip; ./aws/install --update
 
-    pre_build:
-      commands:
-        - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
+  pre_build:
+    commands:
+      - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
 
-    build:
-      commands:
-        - echo "Retrieving DB credentials from Secrets Manager..."
-        - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text)
-        - USERNAME=$(echo $SECRET_JSON | jq -r .username)
-        - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
-        - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
-        - if [ ! -d k8s ]; then echo "ERROR: k8s/ folder missing"; exit 1; fi
+  build:
+    commands:
+      - echo "Retrieving DB credentials from Secrets Manager..."
+      - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text)
+      - USERNAME=$(echo $SECRET_JSON | jq -r .username)
+      - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
+      - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
+      - if [ ! -d k8s ]; then echo "ERROR: k8s/ folder missing"; exit 1; fi
 
-        - |
-          cat <<EOF > k8s/db-secret.yaml
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: db-credentials
-            namespace: hello-app
-          type: Opaque
-          stringData:
-            DB_USER: $USERNAME
-            DB_PASS: $PASSWORD
-            DB_NAME: $DBNAME
-          EOF
+      - |
+        cat <<EOF > k8s/db-secret.yaml
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: db-credentials
+          namespace: hello-app
+        type: Opaque
+        stringData:
+          DB_USER: $USERNAME
+          DB_PASS: $PASSWORD
+          DB_NAME: $DBNAME
+        EOF
 
-        - echo "Applying Kubernetes manifests..."
-        - |
-          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          AWS_REGION=$AWS_DEFAULT_REGION
-          envsubst < k8s/postgres-deploy.yaml | kubectl apply -f -
-        - |
-          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          AWS_REGION=$AWS_DEFAULT_REGION
-          envsubst < k8s/frontend-deploy.yaml | kubectl apply -f -
-        - kubectl apply -f k8s/namespace.yaml
-        - kubectl apply -f k8s/db-secret.yaml
-        - kubectl apply -f k8s/postgres-service.yaml
-        - kubectl apply -f k8s/frontend-service.yaml
+      - echo "Applying Kubernetes manifests..."
+      - |
+        AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        AWS_REGION=$AWS_DEFAULT_REGION
+        envsubst < k8s/postgres-deploy.yaml | kubectl apply -f -
+      - |
+        AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        AWS_REGION=$AWS_DEFAULT_REGION
+        envsubst < k8s/frontend-deploy.yaml | kubectl apply -f -
+      - kubectl apply -f k8s/namespace.yaml
+      - kubectl apply -f k8s/db-secret.yaml
+      - kubectl apply -f k8s/postgres-service.yaml
+      - kubectl apply -f k8s/frontend-service.yaml
 
-  artifacts:
-    files:
-      - '**/*'
+artifacts:
+  files:
+    - '**/*'
