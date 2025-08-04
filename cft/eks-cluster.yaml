@@ -106,6 +106,7 @@ Resources:
     Type: AWS::EKS::Cluster
     Properties:
       Name: !Ref EKSClusterName
+      KubernetesVersion: '1.32'
       ResourcesVpcConfig:
         SubnetIds:
           - !Ref EksSubnetA
