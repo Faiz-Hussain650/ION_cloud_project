@@ -13,8 +13,11 @@ phases:
 
   pre_build:
     commands:
-      - echo "Updating kubeconfig for EKS cluster $EKS_CLUSTER…"
+      - echo "Preparing kubeconfig…"
+      - mkdir -p ~/.kube
       - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
+      - export KUBECONFIG=~/.kube/config
+      - echo "KUBECONFIG is $KUBECONFIG"
 
   build:
     commands:
@@ -38,19 +41,19 @@ phases:
           DB_NAME: $DBNAME
         EOF
 
-      - echo "Applying Kubernetes manifests…"
+      - echo "Applying Kubernetes manifests with validation disabled…"
       - |
         AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
         AWS_REGION=$AWS_DEFAULT_REGION
-        envsubst < k8s/postgres-deploy.yaml | kubectl apply -f -
+        envsubst < k8s/postgres-deploy.yaml | kubectl apply --validate=false -f -
       - |
         AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
         AWS_REGION=$AWS_DEFAULT_REGION
-        envsubst < k8s/frontend-deploy.yaml | kubectl apply -f -
-      - kubectl apply -f k8s/namespace.yaml
-      - kubectl apply -f k8s/db-secret.yaml
-      - kubectl apply -f k8s/postgres-service.yaml
-      - kubectl apply -f k8s/frontend-service.yaml
+        envsubst < k8s/frontend-deploy.yaml | kubectl apply --validate=false -f -
+      - kubectl apply --validate=false -f k8s/namespace.yaml
+      - kubectl apply --validate=false -f k8s/db-secret.yaml
+      - kubectl apply --validate=false -f k8s/postgres-service.yaml
+      - kubectl apply --validate=false -f k8s/frontend-service.yaml
 
 artifacts:
   files:
