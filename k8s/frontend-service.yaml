@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: frontend
   namespace: hello-app
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: HTTP
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/"
 spec:
   type: LoadBalancer
   selector:
