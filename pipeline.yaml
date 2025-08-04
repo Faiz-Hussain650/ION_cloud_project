@@ -232,6 +232,7 @@ Resources:
                           - USERNAME=$(echo $SECRET_JSON | jq -r .username)
                           - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
                           - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
+                          - if [ ! -d k8s ]; then echo "ERROR: k8s/ folder missing"; exit 1; fi
                           - |
                             cat <<EOF > k8s/db-secret.yaml
                             apiVersion: v1
@@ -246,14 +247,17 @@ Resources:
                               DB_NAME: $DBNAME
                             EOF
                           - echo "Applying Kubernetes manifests..."
+                          
                           - |
                             AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
                             AWS_REGION=$AWS_DEFAULT_REGION
                             envsubst < k8s/postgres-deploy.yaml | kubectl apply -f -
+
                           - |
                             AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
                             AWS_REGION=$AWS_DEFAULT_REGION
                             envsubst < k8s/frontend-deploy.yaml | kubectl apply -f -
+
                           - kubectl apply -f k8s/namespace.yaml
                           - kubectl apply -f k8s/db-secret.yaml
                           - kubectl apply -f k8s/postgres-service.yaml
