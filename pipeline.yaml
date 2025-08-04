@@ -52,11 +52,17 @@ Resources:
     Properties:
       Name: hello-app/db-credentials
       Description: "DB credentials for hello-app"
-      SecretString: !Sub |
-        {
-          "username": "${DBUser}",
-          "dbname": "${DBName}"
-        }
+      #SecretString: !Sub |
+       # {
+       #   "username": "${DBUser}",
+       #   "dbname": "${DBName}"
+       # }  
+      GenerateSecretString:
+        SecretStringTemplate: !Sub |
+          {"username":"${DBUser}","dbname":"${DBName}"}
+
+        GenerateStringKey: "password"
+        ExcludeCharacters: '"@\'
 
   ### 3.1 CodeBuild: Build & Test Project ###
   HelloAppBuildProject:
@@ -202,10 +208,8 @@ Resources:
                 Provider: CodeBuild
                 Version: '1'
               InputArtifacts:
-                - Name: SourceOutput 
                 - Name: BuildOutput
               Configuration:
-                PrimarySource: SourceOutput
                 ProjectName: !Ref HelloAppDeployProject
                 BuildspecOverride: |
                     version: 0.2
