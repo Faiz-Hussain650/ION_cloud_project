@@ -215,7 +215,6 @@ Resources:
                           - chmod +x kubectl; mv kubectl /usr/local/bin/
                           - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
                           - unzip awscli.zip; ./aws/install --update
-                          - yum install -y gettext
 
                       pre_build:
                         commands:
