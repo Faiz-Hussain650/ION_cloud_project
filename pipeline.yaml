@@ -232,9 +232,7 @@ Resources:
                           - USERNAME=$(echo $SECRET_JSON | jq -r .username)
                           - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
                           - DBNAME=$(echo $SECRET_JSON | jq -r .dbname)
-                          - mkdir -p k8s 
                           - |
-                            set +u
                             cat <<EOF > k8s/db-secret.yaml
                             apiVersion: v1
                             kind: Secret
@@ -247,7 +245,6 @@ Resources:
                               DB_PASS: $PASSWORD
                               DB_NAME: $DBNAME
                             EOF
-                            set -u
                           - echo "Applying Kubernetes manifests..."
                           - |
                             # Dynamically substitute AWS Account and Region into deployment manifests
