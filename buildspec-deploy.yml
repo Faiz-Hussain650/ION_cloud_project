@@ -3,19 +3,22 @@ version: 0.2
 phases:
   install:
     commands:
-      - curl -sSL -o kubectl https://amazon-eks.s3.${AWS_DEFAULT_REGION}.amazonaws.com/1.32.3/2025-04-17/bin/linux/amd64/kubectl
+      - echo "Downloading kubectl v1.32.3 from EKS S3…"
+      - curl -sSL -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.32.3/2025-04-17/bin/linux/amd64/kubectl
       - chmod +x kubectl && mv kubectl /usr/local/bin/
       - kubectl version --client
+      - echo "Installing AWS CLI…"
       - curl -sSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
-      - unzip awscli.zip && ./aws/install --update
+      - unzip -q awscli.zip && ./aws/install --update
 
   pre_build:
     commands:
+      - echo "Updating kubeconfig for EKS cluster $EKS_CLUSTER…"
       - aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_DEFAULT_REGION
 
   build:
     commands:
-      - echo "Retrieving DB credentials from Secrets Manager..."
+      - echo "Retrieving DB credentials from Secrets Manager…"
       - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id $SECRET_ARN --query SecretString --output text)
       - USERNAME=$(echo $SECRET_JSON | jq -r .username)
       - PASSWORD=$(echo $SECRET_JSON | jq -r .password)
@@ -35,7 +38,7 @@ phases:
           DB_NAME: $DBNAME
         EOF
 
-      - echo "Applying Kubernetes manifests..."
+      - echo "Applying Kubernetes manifests…"
       - |
         AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
         AWS_REGION=$AWS_DEFAULT_REGION
