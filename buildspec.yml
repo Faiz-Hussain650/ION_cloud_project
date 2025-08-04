@@ -19,8 +19,10 @@ phases:
   build:
     commands:
       - echo Building Docker images...
-      - docker build -t $ECR_DB_REPO:latest ./database
-      - docker build -t $ECR_FE_REPO:latest ./frontend
+      - docker build -t hello-db ./database
+      - docker tag hello-db:latest $ECR_DB_REPO:latest
+      - docker build -t hello-frontend ./frontend
+      - docker tag hello-frontend:latest $ECR_FE_REPO:latest
 
   post_build:
     commands:

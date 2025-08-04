@@ -1,4 +1,4 @@
-FROM postgres:13
+FROM public.ecr.aws/docker/library/postgres:13
 
 ENV POSTGRES_DB=hello_db
 ENV POSTGRES_USER=hello_user
